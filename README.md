@@ -3,6 +3,8 @@
 
 Trello integration for Home Assistant.
 
+This is a fork of [ScottG489/ha-trello](https://github.com/ScottG489/ha-trello) that adds to-do lists, chains, and moving cards. The count sensors and the setup are the original's.
+
 ## Features
 - Sensors to track the number of cards in the lists on any Trello board.
 - A to-do list for each Trello list, with an item for each card: its name, description, and due date.
@@ -45,7 +47,7 @@ Changes made in Home Assistant show at once; changes made in Trello show within 
 - Services for creating, updating, and deleting lists and boards.
 - OAuth support ([as soon as Trello adds support for OAuth2](https://developer.atlassian.com/cloud/trello/guides/rest-api/authorization/#using-basic-oauth))
 - Moving to a push model rather than polling for improved responsiveness.
-- [Anything you'd like to request that this integration doesn't do!](https://github.com/ScottG489/ha-trello/issues/new?assignees=&labels=Feature%2BRequest&projects=&template=feature_request.yaml)
+- [Anything you'd like to request that this integration doesn't do!](https://github.com/agentdanger/ha-trello/issues/new?assignees=&labels=Feature%2BRequest&projects=&template=feature_request.yaml)
 
 
 
@@ -98,7 +100,7 @@ pytest tests --cov=custom_components.trello --cov-report term-missing
 ```
 
 ### Releasing
-[Create a new GitHub release](https://github.com/ScottG489/ha-trello/releases/new). The [release workflow](https://github.com/ScottG489/ha-trello/blob/master/.github/workflows/release.yaml) takes care of the rest.
+[Create a new GitHub release](https://github.com/agentdanger/ha-trello/releases/new). The [release workflow](https://github.com/agentdanger/ha-trello/blob/master/.github/workflows/release.yaml) takes care of the rest.
 When finished, it will be available to download via HACS.
 
 ### Troubleshooting
