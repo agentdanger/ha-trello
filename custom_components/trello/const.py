@@ -16,6 +16,11 @@ CONF_BOARD_IDS = "board_ids"
 # {board_id: [[list_id, list_id, ...], ...]}: the ordered chains of lists a
 # card moves along when its to-do item is ticked.
 CONF_CHAINS = "chains"
+# Seconds between fetches of the boards from Trello.
+CONF_UPDATE_INTERVAL = "update_interval"
+DEFAULT_UPDATE_INTERVAL: Final = 15
+MIN_UPDATE_INTERVAL: Final = 5
+MAX_UPDATE_INTERVAL: Final = 600
 
 CARD_FIELDS: Final = ["name", "desc", "due", "dueComplete", "pos"]
 

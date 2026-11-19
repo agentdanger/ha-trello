@@ -47,7 +47,7 @@ async def test_options_flow_chains(
         assert result["step_id"] == "init"
 
         result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {CONF_BOARD_IDS: [GOALS, IDEAS]}
+            result["flow_id"], {CONF_BOARD_IDS: [GOALS, IDEAS], "update_interval": 20}
         )
         assert result["step_id"] == "chain"
         assert result["description_placeholders"] == {"board": "Goals", "number": "1"}
@@ -77,4 +77,5 @@ async def test_options_flow_chains(
     assert config_entry.options == {
         CONF_BOARD_IDS: [GOALS, IDEAS],
         CONF_CHAINS: {GOALS: [["c", "b", "a"], ["d", "e"]]},
+        "update_interval": 20,
     }

@@ -11,6 +11,9 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -21,6 +24,10 @@ from . import TrelloAdapter
 from .const import (
     CONF_BOARD_IDS,
     CONF_CHAINS,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
+    MAX_UPDATE_INTERVAL,
+    MIN_UPDATE_INTERVAL,
     CONF_USER_EMAIL,
     CONF_USER_ID,
     DOMAIN,
@@ -156,6 +163,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         self.ids_boards: dict[str, dict[str, str]] = {}
         self.board_lists: dict[str, dict[str, str]] = {}
         self.chains: dict[str, list[list[str]]] = {}
+        self.update_interval = DEFAULT_UPDATE_INTERVAL
         self.board_index = 0
         self.chain_index = 0
         self.trello_adapter: TrelloAdapter
@@ -179,11 +187,29 @@ class OptionsFlow(config_entries.OptionsFlow):
             ]
             return self.async_show_form(
                 step_id="init",
-                data_schema=_get_board_select_schema(self.ids_boards, current),
+                data_schema=_get_board_select_schema(self.ids_boards, current).extend(
+                    {
+                        vol.Required(
+                            CONF_UPDATE_INTERVAL,
+                            default=self.config_entry.options.get(
+                                CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+                            ),
+                        ): NumberSelector(
+                            NumberSelectorConfig(
+                                min=MIN_UPDATE_INTERVAL,
+                                max=MAX_UPDATE_INTERVAL,
+                                step=1,
+                                unit_of_measurement="s",
+                                mode=NumberSelectorMode.BOX,
+                            )
+                        )
+                    }
+                ),
                 last_step=False,
             )
 
         self.board_ids = user_input[CONF_BOARD_IDS]
+        self.update_interval = int(user_input[CONF_UPDATE_INTERVAL])
         self.board_lists = await self.hass.async_add_executor_job(
             self.trello_adapter.get_lists, self.board_ids
         )
@@ -215,7 +241,11 @@ class OptionsFlow(config_entries.OptionsFlow):
             self.board_index += 1
             self.chain_index = 0
         return self.async_create_entry(
-            data={CONF_BOARD_IDS: self.board_ids, CONF_CHAINS: self.chains}
+            data={
+                CONF_BOARD_IDS: self.board_ids,
+                CONF_CHAINS: self.chains,
+                CONF_UPDATE_INTERVAL: self.update_interval,
+            }
         )
 
     def _show_chain_form(

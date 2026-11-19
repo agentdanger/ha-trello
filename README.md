@@ -41,7 +41,8 @@ data:
 ```
 
 A due date set in Home Assistant without a time is saved in Trello as 9:00 AM that day.
-Changes made in Home Assistant show at once; changes made in Trello show within a minute.
+Changes made in Home Assistant show at once. Changes made in Trello show at the next check, every
+15 seconds unless you set another interval in the **Configure** dialog (5 seconds at the least).
 
 ### Planned features
 - Services for creating, updating, and deleting lists and boards.

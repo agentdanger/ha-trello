@@ -16,6 +16,7 @@ from trello.batch.board import Board as BatchBoard
 from .const import (
     ARCHIVE_AT_END_OF_CHAIN,
     CARD_FIELDS,
+    DEFAULT_UPDATE_INTERVAL,
     LOGGER,
     MOVED_CARD_POSITION,
     Board,
@@ -36,13 +37,14 @@ class TrelloDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Board]]):
         trello_client: TrelloClient,
         board_ids: list[str],
         chains: dict[str, list[list[str]]] | None = None,
+        update_interval: int = DEFAULT_UPDATE_INTERVAL,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass=hass,
             logger=LOGGER,
             name="trello",
-            update_interval=timedelta(seconds=60),
+            update_interval=timedelta(seconds=update_interval),
         )
         self.client = trello_client
         self.board_ids = board_ids
@@ -198,8 +200,8 @@ class TrelloDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Board]]):
 
         The change is made to the data already held and the entities are told
         at once. Reading the board straight after writing to it can return it
-        as it was before, which would put a moved card back for a minute. The
-        next regular fetch, a minute from now, confirms it.
+        as it was before, which would put a moved card back until the next
+        fetch. The next regular fetch, a full interval from now, confirms it.
         """
         self.async_set_updated_data(self.data)
 

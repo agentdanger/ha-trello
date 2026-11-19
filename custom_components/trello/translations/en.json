@@ -29,7 +29,7 @@
         "step": {
             "init": {
                 "data": {
-                    "board_ids": "Board names"
+                    "board_ids": "Board names", "update_interval": "Check Trello for changes every"
                 }
             },
             "chain": {

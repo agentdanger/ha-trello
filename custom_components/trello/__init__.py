@@ -8,7 +8,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_API_TOKEN, Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_BOARD_IDS, CONF_CHAINS, DOMAIN
+from .const import (
+    CONF_BOARD_IDS,
+    CONF_CHAINS,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+)
 from .coordinator import TrelloDataUpdateCoordinator
 
 PLATFORMS: list[str] = [Platform.BUTTON, Platform.SENSOR, Platform.TODO]
@@ -23,7 +29,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         api_secret=config_data[CONF_API_TOKEN],
     )
     trello_coordinator = TrelloDataUpdateCoordinator(
-        hass, trello_client, config_boards, entry.options.get(CONF_CHAINS)
+        hass,
+        trello_client,
+        config_boards,
+        entry.options.get(CONF_CHAINS),
+        entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
     )
     await trello_coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = trello_coordinator
