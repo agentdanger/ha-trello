@@ -2,15 +2,16 @@
 from __future__ import annotations
 
 from trello import Member, TrelloClient
+from trello.batch.board import Board as BatchBoard
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_API_TOKEN, Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_BOARD_IDS, DOMAIN
+from .const import CONF_BOARD_IDS, CONF_CHAINS, DOMAIN
 from .coordinator import TrelloDataUpdateCoordinator
 
-PLATFORMS: list[str] = [Platform.SENSOR]
+PLATFORMS: list[str] = [Platform.BUTTON, Platform.SENSOR, Platform.TODO]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -21,7 +22,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         api_key=config_data[CONF_API_KEY],
         api_secret=config_data[CONF_API_TOKEN],
     )
-    trello_coordinator = TrelloDataUpdateCoordinator(hass, trello_client, config_boards)
+    trello_coordinator = TrelloDataUpdateCoordinator(
+        hass, trello_client, config_boards, entry.options.get(CONF_CHAINS)
+    )
     await trello_coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = trello_coordinator
 
@@ -68,4 +71,17 @@ class TrelloAdapter:
         return {
             board.id: {"id": board.id, "name": board.name}
             for board in self.client.list_boards(board_filter="open")
+        }
+
+    def get_lists(self, board_ids: list[str]) -> dict[str, dict[str, str]]:
+        """Get the open lists of each board, in board order, as ID to name."""
+        if not board_ids:
+            return {}
+        responses = self.client.fetch_batch(
+            [BatchBoard.GetLists(board_id, ["name"]) for board_id in board_ids]
+        )
+        return {
+            board_id: {list_.id: list_.name for list_ in response.payload}
+            for board_id, response in zip(board_ids, responses)
+            if response.success
         }

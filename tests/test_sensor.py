@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from custom_components.trello.sensor import SensorStateClass
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
@@ -16,18 +17,20 @@ async def test_sensor_setup_entry(
     """Test sensors are set up and updated as expected."""
     await setup_integration()
 
-    all_states = hass.states.async_all()
-    all_devices = hass.data["device_registry"].devices.data.values()
+    all_states = hass.states.async_all("sensor")
+    device_registry = dr.async_get(hass)
+    all_devices = list(device_registry.devices)
 
     assert len(all_states) == 3
     assert len(all_devices) == 2
 
-    ideas_board_device = hass.data["device_registry"].async_get_device(
-        {("trello", "bea542e091bc1bfe5e780c8f")}
-    )
-    goals_board_device = hass.data["device_registry"].async_get_device(
-        {("trello", "3a634d47a4cb1e9a9886a2e3")}
-    )
+    devices_by_id = {
+        identifier: device
+        for device in all_devices
+        for identifier in device.identifiers
+    }
+    ideas_board_device = devices_by_id[("trello", "bea542e091bc1bfe5e780c8f")]
+    goals_board_device = devices_by_id[("trello", "3a634d47a4cb1e9a9886a2e3")]
 
     assert ideas_board_device.name == "Ideas"
     assert goals_board_device.name == "Goals"

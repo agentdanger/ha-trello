@@ -5,9 +5,44 @@ Trello integration for Home Assistant.
 
 ## Features
 - Sensors to track the number of cards in the lists on any Trello board.
+- A to-do list for each Trello list, with an item for each card: its name, description, and due date.
+  Adding, editing, reordering, and removing items in Home Assistant changes the cards in Trello.
+  Removing an item archives its card; nothing is deleted.
+- Chains: ticking an item moves its card to the next list. See [Chains](#chains).
+- A `trello.move_card` action and an "Undo last move" button for moving cards back.
+
+Labels, members, checklists, and attachments are not shown.
+
+### Chains
+Home Assistant to-do items have one checkbox. On a Trello board, work usually moves through lists
+(To Do, Doing, Done), so the checkbox can be made to mean "move this card on".
+
+Open the integration's **Configure** dialog, pick your boards, and then for each board pick the lists
+that make a chain, **in the order a card moves through them**. A board can have more than one chain,
+and a list can be in one chain at most.
+
+- On a chained list every card shows unchecked. Ticking one moves the card to the top of the next
+  list of the chain. Ticking a card on the last list archives it.
+- On a list that is in no chain, the checkbox is the card's own complete mark in Trello.
+- Each chain has an **Undo last move** button, which puts the last card moved along that chain
+  back where it was (out of the archive too). It remembers one move, and not across a restart.
+- The `trello.move_card` action moves a card `next` or `previous` along its chain, or to any list on
+  the same board by name:
+
+```yaml
+action: trello.move_card
+target:
+  entity_id: todo.my_board_doing
+data:
+  item: Paint the fence
+  direction: previous   # or: list: To Do
+```
+
+A due date set in Home Assistant without a time is saved in Trello as 9:00 AM that day.
+Changes made in Home Assistant show at once; changes made in Trello show within a minute.
 
 ### Planned features
-- Services for creating, updating, and deleting cards, lists, and boards.
+- Services for creating, updating, and deleting lists and boards.
 - OAuth support ([as soon as Trello adds support for OAuth2](https://developer.atlassian.com/cloud/trello/guides/rest-api/authorization/#using-basic-oauth))
 - Moving to a push model rather than polling for improved responsiveness.
 - [Anything you'd like to request that this integration doesn't do!](https://github.com/ScottG489/ha-trello/issues/new?assignees=&labels=Feature%2BRequest&projects=&template=feature_request.yaml)
@@ -38,6 +73,8 @@ Before setting up this integration, you need to get credentials by creating an I
    Select the **"Allow"** button near the bottom right of the page.
 9. On the following page, record your **Token**. *This will be the last credential you'll need.*
 </details>
+
+The token must allow writing (scope `read,write`) for the to-do lists to change cards.
 
 After you have both your **API Key** and **Token** you can start the integration setup.
 

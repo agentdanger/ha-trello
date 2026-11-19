@@ -1,0 +1,22 @@
+move_card:
+  target:
+    entity:
+      integration: trello
+      domain: todo
+  fields:
+    item:
+      required: true
+      example: "Buy a tree"
+      selector:
+        text:
+    direction:
+      selector:
+        select:
+          translation_key: direction
+          options:
+            - next
+            - previous
+    list:
+      example: "In Progress"
+      selector:
+        text:

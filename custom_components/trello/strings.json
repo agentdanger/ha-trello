@@ -21,5 +21,53 @@
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
       "unknown": "[%key:common::config_flow::error::unknown%]"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "board_ids": "Boards"
+        }
+      },
+      "chain": {
+        "title": "{board}: chain {number}",
+        "description": "Pick the lists that make a chain, in the order a card moves through them. Ticking a to-do item on one of these lists moves the card to the next. Leave it empty for no chain.",
+        "data": {
+          "lists": "Lists, in order",
+          "add_another": "Add another chain for this board"
+        }
+      }
+    },
+    "error": {
+      "chain_too_short": "A chain needs at least two lists."
+    }
+  },
+  "services": {
+    "move_card": {
+      "name": "Move card",
+      "description": "Moves a card to the next or previous list of its chain, or to a named list on the same board.",
+      "fields": {
+        "item": {
+          "name": "Card",
+          "description": "The name or ID of the card."
+        },
+        "direction": {
+          "name": "Direction",
+          "description": "Move along the chain. Going past the last list archives the card."
+        },
+        "list": {
+          "name": "List",
+          "description": "The name or ID of a list on the same board, in place of a direction."
+        }
+      }
+    }
+  },
+  "selector": {
+    "direction": {
+      "options": {
+        "next": "Next list",
+        "previous": "Previous list"
+      }
+    }
   }
 }

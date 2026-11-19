@@ -1,12 +1,12 @@
 {
   "domain": "trello",
   "name": "Trello",
-  "codeowners": ["@scottg489"],
+  "codeowners": ["@agentdanger"],
   "config_flow": true,
-  "documentation": "https://github.com/ScottG489/ha-trello",
+  "documentation": "https://github.com/agentdanger/ha-trello",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/ScottG489/ha-trello/issues",
+  "issue_tracker": "https://github.com/agentdanger/ha-trello/issues",
   "loggers": ["trello"],
   "requirements": ["ha-py-trello==0.24.1"],
   "version": "0.0.0"
