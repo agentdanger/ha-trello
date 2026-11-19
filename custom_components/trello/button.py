@@ -49,7 +49,7 @@ class TrelloUndoButton(CoordinatorEntity[TrelloDataUpdateCoordinator], ButtonEnt
     def extra_state_attributes(self) -> dict[str, str] | None:
         """Name the card the button would move back."""
         move = self.coordinator.last_moves.get(self.chain_id)
-        return {"card": move.card_name} if move else None
+        return {"card": move.card.name} if move else None
 
     async def async_press(self) -> None:
         """Undo the last move."""

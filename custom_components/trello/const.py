@@ -69,8 +69,7 @@ class Board:
 class Move:
     """A card move that can be undone."""
 
-    card_id: str
-    card_name: str
+    card: Card
     from_list_id: str
     from_pos: float
     archived: bool

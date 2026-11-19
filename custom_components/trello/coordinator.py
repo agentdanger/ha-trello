@@ -82,21 +82,35 @@ class TrelloDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Board]]):
 
     async def async_create_card(self, list_id: str, fields: dict[str, Any]) -> None:
         """Add a card to the bottom of a list."""
-        await self._async_write(
+        created = await self._async_write(
             "/cards", "POST", {"idList": list_id, "pos": "bottom", **fields}
         )
+        list_ = self._find_list(list_id)
+        if list_ is not None and "id" in created:
+            card = Card(
+                created["id"],
+                created.get("name") or fields.get("name", ""),
+                created.get("desc") or "",
+                created.get("due") or None,
+                bool(created.get("dueComplete")),
+            )
+            _put_card(list_, card, created.get("pos") or "bottom")
+        self._publish()
 
     async def async_update_card(self, card_id: str, fields: dict[str, Any]) -> None:
         """Change a card."""
         await self._async_write(f"/cards/{card_id}", "PUT", fields)
+        self._apply(card_id, fields)
+        self._publish()
 
     async def async_archive_cards(self, card_ids: list[str]) -> None:
         """Archive cards. They can be sent back to the board from Trello."""
-        for card_id in card_ids:
-            await self._async_write(
-                f"/cards/{card_id}", "PUT", {"closed": True}, refresh=False
-            )
-        await self.async_refresh()
+        try:
+            for card_id in card_ids:
+                await self._async_write(f"/cards/{card_id}", "PUT", {"closed": True})
+                self._apply(card_id, {"closed": True})
+        finally:
+            self._publish()
 
     async def async_move_card(
         self, board_id: str, from_list_id: str, card: Card, to_list_id: str | None
@@ -110,12 +124,14 @@ class TrelloDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Board]]):
         else:
             fields = {"idList": to_list_id, "pos": MOVED_CARD_POSITION}
         chain = self.get_chain(board_id, from_list_id)
-        await self._async_write(f"/cards/{card.id}", "PUT", fields, refresh=False)
+        from_pos = card.pos
+        await self._async_write(f"/cards/{card.id}", "PUT", fields)
         if chain:
             self.last_moves[chain[0]] = Move(
-                card.id, card.name, from_list_id, card.pos, to_list_id is None
+                card, from_list_id, from_pos, to_list_id is None
             )
-        await self.async_refresh()
+        self._apply(card.id, fields)
+        self._publish()
 
     async def async_advance_card(
         self, board_id: str, list_id: str, card: Card
@@ -154,16 +170,17 @@ class TrelloDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Board]]):
         fields: dict[str, Any] = {"idList": move.from_list_id, "pos": move.from_pos}
         if move.archived:
             fields["closed"] = False
-        await self._async_write(f"/cards/{move.card_id}", "PUT", fields, refresh=False)
+        await self._async_write(f"/cards/{move.card.id}", "PUT", fields)
         del self.last_moves[chain_id]
-        await self.async_refresh()
+        self._apply(move.card.id, fields, move.card)
+        self._publish()
 
     async def _async_write(
-        self, path: str, method: str, fields: dict[str, Any], refresh: bool = True
-    ) -> None:
-        """Send a change to Trello, then fetch the boards again."""
+        self, path: str, method: str, fields: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Send a change to Trello and return what Trello says the card now is."""
         try:
-            await self.hass.async_add_executor_job(
+            response = await self.hass.async_add_executor_job(
                 lambda: self.client.fetch_json(
                     path, http_method=method, post_args=fields
                 )
@@ -174,8 +191,57 @@ class TrelloDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Board]]):
             ) from ex
         except ResourceUnavailable as ex:
             raise HomeAssistantError(f"Trello did not make the change: {ex}") from ex
-        if refresh:
-            await self.async_refresh()
+        return response if isinstance(response, dict) else {}
+
+    def _publish(self) -> None:
+        """Show a change Trello has accepted, without waiting to read it back.
+
+        The change is made to the data already held and the entities are told
+        at once. Reading the board straight after writing to it can return it
+        as it was before, which would put a moved card back for a minute. The
+        next regular fetch, a minute from now, confirms it.
+        """
+        self.async_set_updated_data(self.data)
+
+    def _find_list(self, list_id: str) -> List | None:
+        for board in self.data.values():
+            if list_id in board.lists:
+                return board.lists[list_id]
+        return None
+
+    def _apply(
+        self, card_id: str, fields: dict[str, Any], card: Card | None = None
+    ) -> None:
+        """Make to the held data the change just written to Trello.
+
+        :param card: the card, when it may not be on a board (it was archived).
+        """
+        list_ = None
+        for board in self.data.values():
+            for candidate in board.lists.values():
+                for held in candidate.cards:
+                    if held.id == card_id:
+                        list_, card = candidate, held
+        if card is None:
+            return
+        if "name" in fields:
+            card.name = fields["name"]
+        if "desc" in fields:
+            card.desc = fields["desc"]
+        if "due" in fields:
+            card.due = fields["due"]
+        if "dueComplete" in fields:
+            card.due_complete = fields["dueComplete"]
+        if not {"closed", "idList", "pos"} & fields.keys():
+            return
+        if list_ is not None:
+            list_.cards.remove(card)
+            list_.card_count = len(list_.cards)
+        if fields.get("closed"):
+            return
+        target = self._find_list(fields["idList"]) if "idList" in fields else list_
+        if target is not None:
+            _put_card(target, card, fields.get("pos", card.pos))
 
 
 def _get_boards(batch_response: list[dict], board_ids: list[str]) -> dict[str, Board]:
@@ -225,3 +291,16 @@ def _get_cards(list_: TrelloList) -> list[Card]:
         for card in list_.cards
     ]
     return sorted(cards, key=lambda card: card.pos)
+
+def _put_card(list_: List, card: Card, pos: str | float) -> None:
+    """Put a card in a list at "top", "bottom", or a position number."""
+    positions = [other.pos for other in list_.cards]
+    if pos == "top":
+        card.pos = min(positions) / 2 if positions else 65536
+    elif pos == "bottom":
+        card.pos = max(positions) + 65536 if positions else 65536
+    else:
+        card.pos = float(pos)
+    list_.cards.append(card)
+    list_.cards.sort(key=lambda other: other.pos)
+    list_.card_count = len(list_.cards)

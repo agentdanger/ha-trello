@@ -115,6 +115,10 @@ async def test_tick_on_chain_moves_card_and_undo_moves_it_back(
         ("PUT", f"/cards/{MARATHON}", {"idList": DONE, "pos": "top"})
     ]
     assert hass.states.get(UNDO_BUTTON).attributes["card"] == "Run a marathon"
+    # The lists show the move at once, though Trello still serves the old board.
+    assert hass.states.get("todo.goals_to_do").state == "1"
+    assert hass.states.get("todo.goals_done").state == "1"
+    assert hass.states.get("sensor.goals_done").state == "1"
 
     await hass.services.async_call(
         "button", "press", {}, target={"entity_id": UNDO_BUTTON}, blocking=True
@@ -125,6 +129,8 @@ async def test_tick_on_chain_moves_card_and_undo_moves_it_back(
         f"/cards/{MARATHON}",
         {"idList": TO_DO, "pos": 100},
     )
+    assert hass.states.get("todo.goals_to_do").state == "2"
+    assert hass.states.get("todo.goals_done").state == "0"
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
             "button", "press", {}, target={"entity_id": UNDO_BUTTON}, blocking=True
